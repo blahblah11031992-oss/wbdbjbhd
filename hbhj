@@ -1,0 +1,797 @@
+/**
+ * Generative Insights App - AI-powered testing insights
+ */
+
+import { BarChart3, Activity, ArrowUp, Sparkles, User, Eye, FileText, Link } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+
+interface GenInsightsPageProps {
+  workspaceGuid: string;
+  projectGuid?: string;
+  userName?: string;
+  userEmail?: string;
+}
+
+type PromptCategory =
+  | "release"
+  | "stability"
+  | "performance"
+  | "accessibility"
+  | "system"
+  | "trends"
+  | "predictions"
+  | "ai-recommendation"
+  | "export"
+  | "history";
+
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+}
+
+interface InsightCard {
+  id: string;
+  title: string;
+  value: string;
+  subtitle: string;
+  icon: React.ComponentType<any>;
+  iconBg: string;
+  iconColor: string;
+}
+
+export function GenInsightsPage({
+  workspaceGuid: _workspaceGuid,
+  projectGuid: _projectGuid,
+  userName,
+  userEmail,
+}: GenInsightsPageProps) {
+  const [promptInput, setPromptInput] = useState("");
+  const [activePromptCategory, setActivePromptCategory] =
+    useState<PromptCategory>("release");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [selectedInsight, setSelectedInsight] = useState<InsightCard | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [promptHistory, setPromptHistory] = useState<string[]>([]);
+  const [explainabilityMessageId, setExplainabilityMessageId] = useState<string | null>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const mainScrollRef = useRef<HTMLDivElement>(null);
+
+  const handleSubmitPrompt = () => {
+    if (promptInput.trim()) {
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        role: 'user',
+        content: promptInput.trim(),
+        timestamp: new Date(),
+      };
+      
+      setMessages(prev => [...prev, userMessage]);
+      setIsLoading(true);
+      
+      // Add to prompt history (avoid duplicates and limit to recent 10)
+      setPromptHistory(prev => {
+        const newHistory = [promptInput.trim(), ...prev.filter(p => p !== promptInput.trim())];
+        return newHistory.slice(0, 10);
+      });
+      
+      setPromptInput("");
+      
+      // Clear selected insight when entering conversation mode
+      setSelectedInsight(null);
+      
+      // Simulate AI response
+      setTimeout(() => {
+        const aiMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: `Based on your query "${userMessage.content}", here are the insights:\n\nYour test coverage has increased by 5% in the last week, reaching 87%. The quality score of 9.2/10 indicates strong overall performance. However, there are opportunities to reduce flakiness further - currently at 60% reduction over the last 30 days.\n\nKey recommendations:\n1. Focus on the remaining flaky tests to improve stability\n2. Maintain the positive coverage trend\n3. Monitor critical paths for any degradation`,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, aiMessage]);
+        setIsLoading(false);
+      }, 1000);
+    }
+  };
+
+  const handleRecommendedPrompt = (prompt: string) => {
+    setPromptInput(prompt);
+  };
+
+  const handleInsightClick = (insight: InsightCard) => {
+    setSelectedInsight(insight);
+    // Auto-generate a question about the insight
+    const question = `Tell me more about ${insight.title}`;
+    setPromptInput(question);
+  };
+
+  const insightCards: InsightCard[] = [
+    {
+      id: 'coverage',
+      title: 'Test Coverage',
+      value: '87%',
+      subtitle: '+5% from last week',
+      icon: BarChart3,
+      iconBg: 'bg-[#dcfce7] dark:bg-[#1a3a2a]',
+      iconColor: 'text-[#00A63E] dark:text-[#4ade80]',
+    },
+    {
+      id: 'quality',
+      title: 'Quality Score',
+      value: '9.2',
+      subtitle: 'Out of 10',
+      icon: Activity,
+      iconBg: 'bg-[#f3f4f6] dark:bg-[#2a2a2a]',
+      iconColor: 'text-[#6b7280] dark:text-[#9ca3af]',
+    },
+    {
+      id: 'passed',
+      title: 'Tests Passed',
+      value: '1,247',
+      subtitle: 'Last 30 days',
+      icon: Activity,
+      iconBg: 'bg-[#dbeafe] dark:bg-[#1a2a3a]',
+      iconColor: 'text-[#155DFC] dark:text-[#60a5fa]',
+    },
+    {
+      id: 'flaky',
+      title: 'Flaky Reduction',
+      value: '60%',
+      subtitle: 'Last 30 days',
+      icon: Activity,
+      iconBg: 'bg-[#dbeafe] dark:bg-[#1a2a3a]',
+      iconColor: 'text-[#155DFC] dark:text-[#60a5fa]',
+    },
+  ];
+
+  const resultsSummaryCard: InsightCard = {
+    id: 'results-summary',
+    title: 'Results Summary',
+    value: '5/10',
+    subtitle: 'passing test cases',
+    icon: BarChart3,
+    iconBg: 'bg-[#dcfce7] dark:bg-[#1a3a2a]',
+    iconColor: 'text-[#00A63E] dark:text-[#4ade80]',
+  };
+
+  const promptCategories = [
+    { id: "release" as PromptCategory, label: "Release" },
+    { id: "stability" as PromptCategory, label: "Stability" },
+    {
+      id: "performance" as PromptCategory,
+      label: "Load & Performance",
+    },
+    {
+      id: "accessibility" as PromptCategory,
+      label: "Accessibility",
+    },
+    { id: "system" as PromptCategory, label: "System" },
+    { id: "trends" as PromptCategory, label: "Trends" },
+    {
+      id: "predictions" as PromptCategory,
+      label: "Predictions",
+    },
+    {
+      id: "ai-recommendation" as PromptCategory,
+      label: "Recommendations",
+    },
+    {
+      id: "export" as PromptCategory,
+      label: "Export",
+    },
+    {
+      id: "history" as PromptCategory,
+      label: "History",
+    },
+  ];
+
+  const promptsByCategory: Record<PromptCategory, string[]> = {
+    release: [
+      "Give me a breakdown of deploy frequency in the last 30/60/90 days by team",
+      "Show me release readiness for v2.0",
+      "Which tests are blocking the release?",
+      "Compare test results vs last release",
+      "Generate release notes from test results",
+    ],
+    stability: [
+      "Which tests are most flaky?",
+      "Show stability metrics for critical paths",
+      "Identify tests with inconsistent results",
+      "Compare stability across environments",
+    ],
+    performance: [
+      "Show load test results from last week",
+      "Which endpoints are slowest?",
+      "Compare performance vs baseline",
+      "Identify performance regressions",
+    ],
+    accessibility: [
+      "Check WCAG compliance coverage",
+      "Show accessibility test results",
+      "Which pages need accessibility tests?",
+      "Generate accessibility report",
+    ],
+    system: [
+      "Show system health metrics",
+      "Which integrations are failing?",
+      "Display resource usage trends",
+      "Check infrastructure status",
+    ],
+    trends: [
+      "What's the trend in test failures?",
+      "Show coverage trends over time",
+      "Display quality score progression",
+      "Identify patterns in flaky tests",
+    ],
+    predictions: [
+      "Predict potential issues for next sprint",
+      "Which areas are likely to fail?",
+      "Forecast test coverage gaps",
+      "Estimate time to fix critical issues",
+    ],
+    "ai-recommendation": [
+      "Suggest improvements for test coverage",
+      "Recommend tests to add for better quality",
+      "Propose strategies to reduce flakiness",
+      "Advise on optimizing test performance",
+    ],
+    "export": [
+      "Export test results to Excel",
+      "Export charts to PowerPoint",
+      "Create comprehensive test report",
+      "Download insights as PDF",
+    ],
+    "history": [
+      "Show test results from last sprint",
+      "Display historical test coverage",
+      "Review past performance metrics",
+      "Analyze historical trends",
+    ],
+  };
+
+  const recommendedPrompts =
+    activePromptCategory === "history" && promptHistory.length > 0
+      ? promptHistory
+      : promptsByCategory[activePromptCategory];
+
+  useEffect(() => {
+    if (chatContainerRef.current && mainScrollRef.current && messages.length > 0) {
+      // Scroll the main container to show AI Insights section
+      setTimeout(() => {
+        chatContainerRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start'
+        });
+      }, 100);
+    }
+  }, [messages]);
+
+  return (
+    <div
+      className="h-full flex flex-col"
+      style={{ backgroundColor: "var(--background)" }}
+    >
+      {/* Main scrollable content */}
+      <div className="flex-1 overflow-auto pb-24" ref={mainScrollRef}>
+        {/* Added pb-24 for footer clearance */}
+        <div className="max-w-6xl mx-auto px-8 pt-24 pb-12">
+          {/* Header */}
+          <div className="mb-8">
+            <h1
+              className="mb-3"
+              style={{ color: "var(--foreground)" }}
+            >
+              Generative Insights
+            </h1>
+            <p
+              className="text-xl"
+              style={{ color: "var(--text-muted)" }}
+            >
+              AI-powered insights for your testing workflow
+            </p>
+          </div>
+
+          {/* Main Grid Layout: Left card + Right grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-[338px_1fr] gap-4">
+            {/* Left: Results Summary with Gauge Chart - Now Clickable */}
+            <button
+              onClick={() => handleInsightClick(resultsSummaryCard)}
+              className="border rounded-[10px] shadow-sm h-[344px] p-0 text-left transition-all hover:shadow-md cursor-pointer"
+              style={{
+                backgroundColor: "var(--background)",
+                borderColor: selectedInsight?.id === resultsSummaryCard.id ? "var(--scale-700)" : "var(--border)",
+                borderWidth: selectedInsight?.id === resultsSummaryCard.id ? "2px" : "1px",
+              }}
+            >
+              <div className="px-8 pt-8 pb-0">
+                <h2
+                  className="text-[18px] font-semibold mb-1"
+                  style={{ color: "var(--foreground)" }}
+                >
+                  Results Summary
+                </h2>
+                <p
+                  className="text-[13px] mb-4"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  Number of passing test cases
+                </p>
+              </div>
+
+              <div className="px-3 pb-0">
+                <div className="h-20 flex items-center justify-center text-6xl font-bold" style={{ color: "#10B981" }}>
+                  5<span className="text-2xl text-muted-foreground">/10</span>
+                </div>
+              </div>
+            </button>
+
+            {/* Right: Metric Cards in 2x2 Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-fit">
+              {insightCards.map((card) => {
+                const Icon = card.icon;
+                return (
+                  <button
+                    key={card.id}
+                    onClick={() => handleInsightClick(card)}
+                    className="border rounded-[10px] p-6 shadow-sm text-left transition-all hover:shadow-md cursor-pointer"
+                    style={{
+                      backgroundColor: "var(--background)",
+                      borderColor: selectedInsight?.id === card.id ? "var(--scale-700)" : "var(--border)",
+                      borderWidth: selectedInsight?.id === card.id ? "2px" : "1px",
+                    }}
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`w-10 h-10 ${card.iconBg} rounded-[10px] flex items-center justify-center`}>
+                        <Icon
+                          className={`w-5 h-5 ${card.iconColor}`}
+                          strokeWidth={1.67}
+                        />
+                      </div>
+                      <h3
+                        className="text-[14px] font-semibold"
+                        style={{ color: "var(--foreground)" }}
+                      >
+                        {card.title}
+                      </h3>
+                    </div>
+                    <p
+                      className="text-[24px] font-bold mb-0.5"
+                      style={{ color: "var(--foreground)" }}
+                    >
+                      {card.value}
+                    </p>
+                    <p
+                      className="text-[13px]"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      {card.subtitle}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Conversation View */}
+          {messages.length > 0 && (
+            <div className="mt-8">
+              <div 
+                className="border rounded-[10px] p-6 shadow-sm"
+                style={{
+                  backgroundColor: "var(--background)",
+                  borderColor: "var(--border)",
+                }}
+              >
+                <div className="flex items-center gap-2 mb-6">
+                  <Sparkles className="w-5 h-5" style={{ color: "var(--foreground)" }} />
+                  <h2 
+                    className="text-[18px] font-semibold"
+                    style={{ color: "var(--foreground)" }}
+                  >
+                    AI Insights
+                  </h2>
+                </div>
+
+                <div className="space-y-4" ref={chatContainerRef}>
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      {message.role === 'assistant' && (
+                        <div className="flex flex-col items-center gap-1">
+                          <div 
+                            className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                            style={{ backgroundColor: "var(--scale-200)" }}
+                          >
+                            <Sparkles className="w-4 h-4" style={{ color: "var(--foreground)" }} />
+                          </div>
+                          <button 
+                            onClick={() => setExplainabilityMessageId(message.id)}
+                            className="text-[11px] whitespace-nowrap cursor-pointer hover:underline transition-all"
+                            style={{ color: "var(--text-tertiary)" }}
+                          >
+                            AI
+                          </button>
+                        </div>
+                      )}
+                      <div
+                        className={`max-w-[80%] rounded-[10px] px-4 py-3 ${
+                          message.role === 'user' 
+                            ? 'rounded-br-sm' 
+                            : 'rounded-bl-sm'
+                        }`}
+                        style={{
+                          backgroundColor: message.role === 'user' 
+                            ? "var(--scale-200)" 
+                            : "var(--scale-200)",
+                          color: message.role === 'user' 
+                            ? "var(--foreground)" 
+                            : "var(--foreground)",
+                        }}
+                      >
+                        <p className="text-[14px] whitespace-pre-line">
+                          {message.content}
+                        </p>
+                      </div>
+                      {message.role === 'user' && (
+                        <div className="flex flex-col items-center gap-1">
+                          <div 
+                            className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                            style={{ backgroundColor: "var(--scale-200)" }}
+                          >
+                            <User className="w-4 h-4" style={{ color: "var(--foreground)" }} />
+                          </div>
+                          <span 
+                            className="text-[11px] whitespace-nowrap"
+                            style={{ color: "var(--text-tertiary)" }}
+                          >
+                            {userName || userEmail?.split('@')[0] || 'You'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {isLoading && (
+                    <div className="flex gap-3 justify-start">
+                      <div 
+                        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{ backgroundColor: "var(--scale-200)" }}
+                      >
+                        <Sparkles className="w-4 h-4" style={{ color: "var(--foreground)" }} />
+                      </div>
+                      <div
+                        className="rounded-[10px] rounded-bl-sm px-4 py-3"
+                        style={{
+                          backgroundColor: "var(--scale-100)",
+                        }}
+                      >
+                        <div className="flex gap-1">
+                          <div 
+                            className="w-2 h-2 rounded-full animate-bounce"
+                            style={{ 
+                              backgroundColor: "var(--text-tertiary)",
+                              animationDelay: "0ms"
+                            }}
+                          />
+                          <div 
+                            className="w-2 h-2 rounded-full animate-bounce"
+                            style={{ 
+                              backgroundColor: "var(--text-tertiary)",
+                              animationDelay: "150ms"
+                            }}
+                          />
+                          <div 
+                            className="w-2 h-2 rounded-full animate-bounce"
+                            style={{ 
+                              backgroundColor: "var(--text-tertiary)",
+                              animationDelay: "300ms"
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* AI Explainability Dialog */}
+      {explainabilityMessageId && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setExplainabilityMessageId(null)}
+        >
+          <div 
+            className="border rounded-[10px] shadow-lg max-w-sm w-full"
+            style={{
+              backgroundColor: "var(--background)",
+              borderColor: "var(--border)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 space-y-5">
+              {/* Header */}
+              <div>
+                <p 
+                  className="text-[12px] mb-3"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  AI Explained
+                </p>
+                <p 
+                  className="text-[40px] leading-none font-normal mb-4"
+                  style={{ color: "var(--foreground)" }}
+                >
+                  84%
+                </p>
+              </div>
+
+              {/* Confidence Score */}
+              <div>
+                <p 
+                  className="text-[13px] font-semibold mb-1.5"
+                  style={{ color: "var(--foreground)" }}
+                >
+                  Confidence score
+                </p>
+                <p 
+                  className="text-[12px] leading-relaxed"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  High confidence based on comprehensive analysis of your test data, including 1,247 test executions and coverage trends.
+                </p>
+              </div>
+
+              {/* Divider */}
+              <div 
+                className="border-t"
+                style={{ borderColor: "var(--border)" }}
+              />
+
+              {/* Model Type */}
+              <div>
+                <p 
+                  className="text-[12px] mb-1"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  Model type
+                </p>
+                <p 
+                  className="text-[13px] font-semibold"
+                  style={{ color: "var(--foreground)" }}
+                >
+                  Foundation model
+                </p>
+              </div>
+
+              {/* Divider */}
+              <div 
+                className="border-t"
+                style={{ borderColor: "var(--border)" }}
+              />
+
+              {/* Data Sources */}
+              <div>
+                <p 
+                  className="text-[12px] mb-2"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  Data sources
+                </p>
+                <div className="space-y-1.5">
+                  <p 
+                    className="text-[13px]"
+                    style={{ color: "var(--foreground)" }}
+                  >
+                    • Test Execution Database
+                  </p>
+                  <p 
+                    className="text-[13px]"
+                    style={{ color: "var(--foreground)" }}
+                  >
+                    • Coverage Analytics
+                  </p>
+                  <p 
+                    className="text-[13px]"
+                    style={{ color: "var(--foreground)" }}
+                  >
+                    • Flakiness Metrics
+                  </p>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div 
+                className="border-t"
+                style={{ borderColor: "var(--border)" }}
+              />
+
+              {/* Reasoning Steps */}
+              <div>
+                <p 
+                  className="text-[12px] mb-2"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  Reasoning process
+                </p>
+                <div className="space-y-1.5">
+                  <p 
+                    className="text-[13px]"
+                    style={{ color: "var(--foreground)" }}
+                  >
+                    1. Data Collection
+                  </p>
+                  <p 
+                    className="text-[13px]"
+                    style={{ color: "var(--foreground)" }}
+                  >
+                    2. Pattern Analysis
+                  </p>
+                  <p 
+                    className="text-[13px]"
+                    style={{ color: "var(--foreground)" }}
+                  >
+                    3. Context Integration
+                  </p>
+                  <p 
+                    className="text-[13px]"
+                    style={{ color: "var(--foreground)" }}
+                  >
+                    4. Recommendation Generation
+                  </p>
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="flex items-center gap-2 pt-3">
+                <button
+                  onClick={() => {
+                    // Add your view sources logic here
+                  }}
+                  className="w-10 h-10 rounded-[10px] flex items-center justify-center transition-colors hover:bg-scale-300"
+                  style={{
+                    backgroundColor: "var(--scale-200)",
+                    color: "var(--foreground)",
+                  }}
+                  title="View sources"
+                >
+                  <Eye className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => {
+                    // Add your documentation logic here
+                  }}
+                  className="w-10 h-10 rounded-[10px] flex items-center justify-center transition-colors hover:bg-scale-300"
+                  style={{
+                    backgroundColor: "var(--scale-200)",
+                    color: "var(--foreground)",
+                  }}
+                  title="View documentation"
+                >
+                  <FileText className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => {
+                    // Add your share logic here
+                  }}
+                  className="w-10 h-10 rounded-[10px] flex items-center justify-center transition-colors hover:bg-scale-300"
+                  style={{
+                    backgroundColor: "var(--scale-200)",
+                    color: "var(--foreground)",
+                  }}
+                  title="Share"
+                >
+                  <Link className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setExplainabilityMessageId(null)}
+                  className="flex-1 px-4 py-2.5 rounded-[10px] text-[13px] font-medium transition-colors hover:opacity-80"
+                  style={{
+                    backgroundColor: "var(--foreground)",
+                    color: "var(--background)",
+                  }}
+                >
+                  View details
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Footer */}
+      <div className="bg-background px-8 py-4 border-t border-border">
+        <div className="max-w-6xl mx-auto space-y-4">
+          {/* Category Tabs (replacing "Recommended prompts" heading) */}
+          <div>
+            <div className="flex gap-2 overflow-x-auto pb-3">
+              {promptCategories.map((category) => (
+                <button
+                  key={category.id}
+                  onClick={() =>
+                    setActivePromptCategory(category.id)
+                  }
+                  className={`px-4 py-2 text-[13px] font-medium rounded-full whitespace-nowrap transition-colors ${
+                    activePromptCategory === category.id
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  style={{
+                    backgroundColor:
+                      activePromptCategory === category.id
+                        ? "var(--scale-200)"
+                        : "transparent",
+                  }}
+                >
+                  {category.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Prompt Pills */}
+            <div className="flex flex-wrap gap-2">
+              {recommendedPrompts.map((prompt, index) => (
+                <button
+                  key={index}
+                  onClick={() =>
+                    handleRecommendedPrompt(prompt)
+                  }
+                  className="border rounded-full px-4 py-2 text-[14px] transition-colors hover:border-foreground"
+                  style={{
+                    backgroundColor: "var(--background)",
+                    borderColor: "var(--border)",
+                    color: "var(--foreground)",
+                  }}
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Input Field */}
+          <div className="relative">
+            <input
+              type="text"
+              value={promptInput}
+              onChange={(e) => setPromptInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleSubmitPrompt();
+                }
+              }}
+              placeholder="Ask anything..."
+              className="w-full px-6 py-4 pr-14 border rounded-full text-[16px] focus:outline-none transition-colors"
+              style={{
+                backgroundColor: "var(--background)",
+                borderColor: "var(--border)",
+                color: "var(--foreground)",
+              }}
+            />
+            <button
+              onClick={handleSubmitPrompt}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+              style={{
+                backgroundColor: promptInput.trim()
+                  ? "var(--foreground)"
+                  : "var(--scale-300)",
+                color: promptInput.trim()
+                  ? "var(--background)"
+                  : "var(--text-tertiary)",
+              }}
+              disabled={!promptInput.trim()}
+            >
+              <ArrowUp className="w-5 h-5" strokeWidth={2} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
